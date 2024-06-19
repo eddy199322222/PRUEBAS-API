@@ -71,9 +71,21 @@ def save_results_to_file(test_name, responses, missing_headers=None):
         json.dump(results, f, indent=2)
     print(f"\nResultados guardados en el archivo: {filename}")
 
-def handle_request(url, headers, payload):
+def handle_request(url, headers, payload, method="POST"):
     try:
-        response = requests.post(url, headers=headers, json=payload)
+        if method.upper() == "GET":
+            response = requests.get(url, headers=headers, params=payload)
+        elif method.upper() == "POST":
+            response = requests.post(url, headers=headers, json=payload)
+        elif method.upper() == "PUT":
+            response = requests.put(url, headers=headers, json=payload)
+        elif method.upper() == "DELETE":
+            response = requests.delete(url, headers=headers, json=payload)
+        elif method.upper() == "PATCH":
+            response = requests.patch(url, headers=headers, json=payload)
+        else:
+            print(f"Método HTTP '{method}' no soportado.")
+            return None
         return response
     except requests.exceptions.RequestException as e:
         print(f"Error en la solicitud: {e}")
@@ -180,6 +192,20 @@ def test_rate_limiting(url, headers, payload):
         missing_headers = check_security_headers(response)
         save_results_to_file("Control de Itinerancia", rate_limit_responses, missing_headers)
 
+def test_verb_tampering(url, headers, payload):
+    print("Ejecutando prueba de verb tampering...")
+    method = input("Introduce el método HTTP que deseas probar (GET, POST, PUT, DELETE, PATCH): ")
+    print_request_details(url, headers, payload)
+    response = handle_request(url, headers, payload, method)
+    if response:
+        print(f'Prueba de verb tampering con método {method}: Estado {response.status_code}, Respuesta:')
+        try:
+            print(json.dumps(response.json(), indent=2))
+        except json.JSONDecodeError:
+            print(response.text)
+        missing_headers = check_security_headers(response)
+        save_results_to_file(f"Verb Tampering ({method})", [(method, response.status_code, response.text)], missing_headers)
+
 def main():
     url, headers = get_api_details()
     payload = get_payload()
@@ -192,7 +218,8 @@ def main():
         print("4. Mostrar Cabeceras de Respuesta")
         print("5. Prueba de Fuzzing")
         print("6. Prueba de Control de Itinerancia")
-        print("7. Salir")
+        print("7. Prueba de Verb Tampering")
+        print("8. Salir")
 
         choice = input("Introduce el número de la prueba que deseas realizar: ")
 
@@ -209,9 +236,11 @@ def main():
         elif choice == "6":
             test_rate_limiting(url, headers, payload)
         elif choice == "7":
+            test_verb_tampering(url, headers, payload)
+        elif choice == "8":
             break
         else:
-            print("Opción no válida. Por favor, selecciona una opción del 1 al 7.")
+            print("Opción no válida. Por favor, selecciona una opción del 1 al 8.")
     
     input("\nPresiona Enter para finalizar...")
 
