@@ -24,9 +24,10 @@ def get_payload():
         return get_payload()
     return payload
 
-def print_request_details(url, headers, payload):
+def print_request_details(url, headers, payload, method):
     print("\nDetalles de la solicitud que se va a enviar:")
     print(f"URL: {url}")
+    print(f"Método: {method}")
     print("Headers:")
     for key, value in headers.items():
         print(f"  {key}: {value}")
@@ -37,11 +38,14 @@ def print_results(test_name, responses):
     print(f"\nResultados de la prueba: {test_name}")
     for req_num, status_code, response_text in responses:
         print(f'Solicitud {req_num}: Estado {status_code}')
-        try:
-            json_response = json.loads(response_text)
-            print(json.dumps(json_response, indent=2))
-        except json.JSONDecodeError:
-            print(response_text)
+        if response_text:
+            try:
+                json_response = json.loads(response_text)
+                print(f"La API respondió con: {json.dumps(json_response, indent=2)}")
+            except json.JSONDecodeError:
+                print(f"La API respondió con: {response_text}")
+        else:
+            print(f"La API no devolvió nada. Estado: {status_code}")
 
 def check_security_headers(response):
     security_headers = [
@@ -95,14 +99,17 @@ def test_auth(url, headers, payload):
     print("Ejecutando prueba de autenticación y autorización...")
     invalid_headers = headers.copy()
     invalid_headers['x-api-key'] = 'INVALID_API_KEY'
-    print_request_details(url, invalid_headers, payload)
+    print_request_details(url, invalid_headers, payload, "POST")
     response = handle_request(url, invalid_headers, payload)
     if response:
-        print(f'Prueba de autenticación: Estado {response.status_code}, Respuesta:')
-        try:
-            print(json.dumps(response.json(), indent=2))
-        except json.JSONDecodeError:
-            print(response.text)
+        if response.text:
+            print(f'Prueba de autenticación: Estado {response.status_code}, Respuesta:')
+            try:
+                print(json.dumps(response.json(), indent=2))
+            except json.JSONDecodeError:
+                print(response.text)
+        else:
+            print(f'Prueba de autenticación: Estado {response.status_code}, La API no devolvió nada.')
         missing_headers = check_security_headers(response)
         save_results_to_file("Autenticación y Autorización", [(1, response.status_code, response.text)], missing_headers)
 
@@ -113,14 +120,17 @@ def test_validation(url, headers, payload):
     for key in payload.keys():
         invalid_value = input(f"Introduce un valor no válido para el parámetro '{key}': ")
         invalid_payload[key] = invalid_value
-        print_request_details(url, headers, invalid_payload)
+        print_request_details(url, headers, invalid_payload, "POST")
         response = handle_request(url, headers, invalid_payload)
         if response:
-            print(f'Prueba de validación para {key}: Estado {response.status_code}, Respuesta:')
-            try:
-                print(json.dumps(response.json(), indent=2))
-            except json.JSONDecodeError:
-                print(response.text)
+            if response.text:
+                print(f'Prueba de validación para {key}: Estado {response.status_code}, Respuesta:')
+                try:
+                    print(json.dumps(response.json(), indent=2))
+                except json.JSONDecodeError:
+                    print(response.text)
+            else:
+                print(f'Prueba de validación para {key}: Estado {response.status_code}, La API no devolvió nada.')
             responses.append((key, response.status_code, response.text))
         invalid_payload[key] = payload[key]
     if responses:
@@ -134,14 +144,17 @@ def test_sqli(url, headers, payload):
     sqli_payload = payload.copy()
     if param_to_test in sqli_payload:
         sqli_payload[param_to_test] += sqli_statement
-        print_request_details(url, headers, sqli_payload)
+        print_request_details(url, headers, sqli_payload, "POST")
         response = handle_request(url, headers, sqli_payload)
         if response:
-            print(f'Prueba de inyección SQL para {param_to_test}: Estado {response.status_code}, Respuesta:')
-            try:
-                print(json.dumps(response.json(), indent=2))
-            except json.JSONDecodeError:
-                print(response.text)
+            if response.text:
+                print(f'Prueba de inyección SQL para {param_to_test}: Estado {response.status_code}, Respuesta:')
+                try:
+                    print(json.dumps(response.json(), indent=2))
+                except json.JSONDecodeError:
+                    print(response.text)
+            else:
+                print(f'Prueba de inyección SQL para {param_to_test}: Estado {response.status_code}, La API no devolvió nada.')
             missing_headers = check_security_headers(response)
             save_results_to_file("Inyección SQL", [(param_to_test, response.status_code, response.text)], missing_headers)
     else:
@@ -149,7 +162,7 @@ def test_sqli(url, headers, payload):
 
 def test_headers(url, headers, payload):
     print("Mostrando cabeceras de respuesta...")
-    print_request_details(url, headers, payload)
+    print_request_details(url, headers, payload, "POST")
     response = handle_request(url, headers, payload)
     if response:
         for key, value in response.headers.items():
@@ -163,14 +176,17 @@ def test_fuzzing(url, headers, payload):
     repeat_count = int(input("Introduce el número de repeticiones: "))
     fuzz_payload = payload.copy()
     fuzz_payload["extraField"] = char_to_repeat * repeat_count
-    print_request_details(url, headers, fuzz_payload)
+    print_request_details(url, headers, fuzz_payload, "POST")
     response = handle_request(url, headers, fuzz_payload)
     if response:
-        print(f'Prueba de fuzzing: Estado {response.status_code}, Respuesta:')
-        try:
-            print(json.dumps(response.json(), indent=2))
-        except json.JSONDecodeError:
-            print(response.text)
+        if response.text:
+            print(f'Prueba de fuzzing: Estado {response.status_code}, Respuesta:')
+            try:
+                print(json.dumps(response.json(), indent=2))
+            except json.JSONDecodeError:
+                print(response.text)
+        else:
+            print(f'Prueba de fuzzing: Estado {response.status_code}, La API no devolvió nada.')
         missing_headers = check_security_headers(response)
         save_results_to_file("Fuzzing", [(1, response.status_code, response.text)], missing_headers)
 
@@ -179,7 +195,7 @@ def test_rate_limiting(url, headers, payload):
     num_requests = int(input("Introduce el número de solicitudes a enviar: "))
     interval = float(input("Introduce el intervalo entre solicitudes (en segundos): "))
     rate_limit_responses = []
-    print_request_details(url, headers, payload)
+    print_request_details(url, headers, payload, "POST")
     for i in range(num_requests):
         response = handle_request(url, headers, payload)
         if response:
@@ -195,16 +211,24 @@ def test_rate_limiting(url, headers, payload):
 def test_verb_tampering(url, headers, payload):
     print("Ejecutando prueba de verb tampering...")
     method = input("Introduce el método HTTP que deseas probar (GET, POST, PUT, DELETE, PATCH): ")
-    print_request_details(url, headers, payload)
+    print_request_details(url, headers, payload, method)
     response = handle_request(url, headers, payload, method)
+    responses = []
     if response:
-        print(f'Prueba de verb tampering con método {method}: Estado {response.status_code}, Respuesta:')
-        try:
-            print(json.dumps(response.json(), indent=2))
-        except json.JSONDecodeError:
-            print(response.text)
+        status_code = response.status_code
+        if response.text:
+            response_text = response.text
+            print(f'Prueba de verb tampering con método {method}: Estado {status_code}, Respuesta:')
+            try:
+                print(json.dumps(response.json(), indent=2))
+            except json.JSONDecodeError:
+                print(response_text)
+        else:
+            response_text = ""
+            print(f'Prueba de verb tampering con método {method}: Estado {status_code}, La API no devolvió nada.')
+        responses.append((method, status_code, response_text))
         missing_headers = check_security_headers(response)
-        save_results_to_file(f"Verb Tampering ({method})", [(method, response.status_code, response.text)], missing_headers)
+        save_results_to_file(f"Verb Tampering ({method})", responses, missing_headers)
 
 def main():
     url, headers = get_api_details()
