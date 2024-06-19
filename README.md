@@ -15,7 +15,7 @@ Puedes instalar la biblioteca `requests` utilizando pip:
 pip install requests
 
 Uso
-Clona este repositorio o descarga el archivo api_security_tests.py.
+Clona este repositorio o descarga el archivo pruebas_api.py.
 
 1.- Ejecuta el script desde la línea de comandos:
 
