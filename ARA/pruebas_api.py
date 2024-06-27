@@ -173,20 +173,19 @@ def test_fuzzing(url, headers, payload):
 def test_rate_limiting(url, headers, payload):
     print("Ejecutando prueba de control de itinerancia...")
     num_requests = int(input("Introduce el número de solicitudes a enviar: "))
-    interval = float(input("Introduce el intervalo entre solicitudes (en segundos): "))
+    interval_ms = float(input("Introduce el intervalo entre solicitudes (en milisegundos): "))
+    interval = interval_ms / 1000  # Convertir a segundos
     rate_limit_responses = []
     print_request_details(url, headers, payload, "POST")
     for i in range(num_requests):
         response = handle_request(url, headers, payload)
         if response:
-            print_response(f'Solicitud {i + 1}', response)
+            print(f'Solicitud {i + 1}: Estado {response.status_code}')
             if response.status_code != 200:
                 rate_limit_responses.append((i + 1, response.status_code, response.text))
-            time.sleep(interval)
+        time.sleep(interval)
     if rate_limit_responses:
-        print_results("Control de itinerancia", rate_limit_responses)
-        missing_headers = check_security_headers(response)
-        save_results_to_file("Control de Itinerancia", rate_limit_responses, missing_headers)
+        save_results_to_file("Control de Itinerancia", rate_limit_responses)
 
 def test_verb_tampering(url, headers, payload):
     print("Ejecutando prueba de verb tampering...")
